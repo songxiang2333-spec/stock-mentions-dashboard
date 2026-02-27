@@ -1,3 +1,4 @@
+
 import smtplib
 from email.mime.text import MIMEText
 import pandas as pd
@@ -19,21 +20,29 @@ def send_email(subject, body):
         print(f"❌ 邮件发送失败: {e}")
 
 def check_alert():
-    # 读取最新数据
+    if not os.path.exists('data/history.csv'):
+        print("数据文件不存在，跳过提醒。")
+        return
+
     df = pd.read_csv('data/history.csv')
-    last_row = df.iloc[-1]
     
+    # 核心修复：如果数据少于 1 行，直接退出
+    if len(df) < 1:
+        print("数据不足，无法进行分析。")
+        return
+
+    last_row = df.iloc[-1]
     ticker = last_row['ticker']
-    buzz_score = last_row['mentions_growth'] # 这里先简单用增长率作为触发条件
+    # 注意：确保这里引用的列名和你 CSV 里的表头完全一致
+    buzz_score = last_row['mentions_growth'] 
     price = last_row['price']
 
-    # 设定触发阈值：比如增长率超过 1.5 (即热度增加 50% 以上)
+    # 触发逻辑
     if buzz_score > 1.5:
         subject = f"🚨 股票预警：{ticker} 社交热度异常！"
-        body = f"股票代码: {ticker}\n当前价格: ${price}\n热度增长: {buzz_score}x\n\n检测到该股讨论量激增，请及时查看仪表板分析。"
+        body = f"股票代码: {ticker}\n当前价格: ${price}\n热度增长: {buzz_score}x"
         send_email(subject, body)
     else:
-        print(f"指标正常 (Buzz: {buzz_score})，无需发送提醒。")
-
+        print(f"指标正常 (Buzz: {buzz_score})")
 if __name__ == "__main__":
     check_alert()
