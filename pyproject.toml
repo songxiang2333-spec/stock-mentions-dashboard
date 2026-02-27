@@ -3,9 +3,13 @@ name = "stock-mentions-dashboard"
 version = "0.1.0"
 description = "Stock Mentions and Sentiment Dashboard"
 authors = ["Your Name"]
+# --- 添加下面这两行 ---
+packages = [{ include = "src" }] 
+# --------------------
 
 [tool.poetry.dependencies]
 python = "^3.11"
+# ... 其余保持不变
 streamlit = "^1.30.0"
 pandas = "^2.1.0"
 vadersentiment = "^3.3.2"
