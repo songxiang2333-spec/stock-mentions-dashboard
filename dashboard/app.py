@@ -1,63 +1,72 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from vadersentiment.vaderSentiment import SentimentIntensityAnalyzer
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-# 初始化情绪分析器
-analyzer = SentimentIntensityAnalyzer()
-
+# --- 核心计算函数 ---
 def calculate_buzz_score(row, vol_weight, sent_weight):
-    """
-    Buzz Score 计算逻辑:
-    Score = (归一化体积 * vol_weight) + (情绪正负面 * sent_weight)
-    """
-    # 模拟简单的 Buzz 逻辑：提及量 * 权重 + 情绪分 * 权重
+    # 简单的加权算法，后续你可以根据需求在这里调整公式
     score = (row['mentions_growth'] * vol_weight) + (row['sentiment_avg'] * sent_weight)
     return round(score, 2)
 
 # --- 页面配置 ---
 st.set_page_config(page_title="Stock Buzz Dashboard", layout="wide")
-st.title("📈 Stock Mentions & Trend Analysis")
+st.title("📈 Stock Mentions & Market Correlation")
 
 # --- 侧边栏：参数调整 ---
-st.sidebar.header("核心参数微调")
-ticker = st.sidebar.text_input("输入股票代码", "NVDA").upper()
+st.sidebar.header("控制面板")
+ticker = st.sidebar.text_input("股票代码", "NVDA").upper()
+vol_w = st.sidebar.slider("提及量权重", 0.0, 1.0, 0.6)
+sent_w = st.sidebar.slider("情绪权重", 0.0, 1.0, 0.4)
 
-st.sidebar.subheader("Buzz Score 权重设置")
-vol_w = st.sidebar.slider("提及量增长权重", 0.0, 1.0, 0.6)
-sent_w = st.sidebar.slider("情绪正向权重", 0.0, 1.0, 0.4)
+# --- 读取 GitHub Action 采集的数据 ---
+try:
+    # 确保读取时处理好类型
+    df = pd.read_csv('data/history.csv')
+    df['date'] = pd.to_datetime(df['date'])
+    df['price'] = df['price'].astype(float)
+    df['buzz_score'] = df.apply(lambda r: calculate_buzz_score(r, vol_w, sent_w), axis=1)
+    
+    # --- 顶层指标展示 ---
+    last_row = df.iloc[-1]
+    prev_row = df.iloc[-2] if len(df) > 1 else last_row
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Buzz Score", last_row['buzz_score'], round(last_row['buzz_score'] - prev_row['buzz_score'], 2))
+    col2.metric("实时股价 ($)", f"{last_row['price']}", round(last_row['price'] - prev_row['price'], 2))
+    col3.metric("提及量 (24h)", int(last_row['mentions']))
 
-# --- 数据模拟 (后续对接你的 Data Pipeline) ---
-# 假设这是你每日采集保存到 data/history.csv 的数据
-data = {
-    'date': pd.date_range(start='2026-02-01', periods=10),
-    'mentions': [120, 150, 300, 280, 450, 600, 550, 800, 950, 1100],
-    'sentiment_avg': [0.1, 0.2, 0.4, 0.3, 0.5, 0.6, 0.4, 0.7, 0.8, 0.9],
-    'mentions_growth': [1.0, 1.2, 2.0, 0.9, 1.6, 1.3, 0.9, 1.4, 1.2, 1.1]
-}
-df = pd.DataFrame(data)
+    # --- 双轴可视化图表 ---
+    st.subheader(f"{ticker} 情绪 vs 价格走势")
+    
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    # 1. 绘制 Buzz Score (主坐标轴 - 左)
+    fig.add_trace(
+        go.Scatter(x=df['date'], y=df['buzz_score'], name="Buzz Score (情绪热度)", 
+                   line=dict(color='#00FFCC', width=3)),
+        secondary_y=False,
+    )
+    
+    # 2. 绘制 股价 (次坐标轴 - 右)
+    fig.add_trace(
+        go.Scatter(x=df['date'], y=df['price'], name="Stock Price (股价)", 
+                   line=dict(color='#FF3399', dash='dot')),
+        secondary_y=True,
+    )
 
-# 计算实时 Buzz Score
-df['buzz_score'] = df.apply(lambda r: calculate_buzz_score(r, vol_w, sent_w), axis=1)
+    fig.update_layout(
+        template="plotly_dark",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
 
-# --- 仪表板展示 ---
-col1, col2, col3 = st.columns(3)
-with col1:
-    current_buzz = df['buzz_score'].iloc[-1]
-    st.metric("Current Buzz Score", current_buzz, delta=round(current_buzz - df['buzz_score'].iloc[-2], 2))
-with col2:
-    st.metric("Avg Sentiment", f"{df['sentiment_avg'].iloc[-1]*100:.1f}%")
-with col3:
-    st.metric("Total Mentions (24h)", df['mentions'].iloc[-1])
+    # --- 数据表格 ---
+    with st.expander("查看原始历史数据"):
+        st.dataframe(df.sort_values('date', ascending=False), use_container_width=True)
 
-# --- 图表分析 ---
-st.subheader(f"{ticker} 趋势分析")
-fig = px.line(df, x='date', y=['buzz_score', 'sentiment_avg'], 
-              title="Buzz Score vs Sentiment Over Time",
-              labels={"value": "Score", "date": "Date"})
-st.plotly_chart(fig, use_container_width=True)
-
-# --- 数据导出 ---
-st.subheader("数据导出")
-csv = df.to_csv(index=False).encode('utf-8')
-st.download_button("下载分析报表 (CSV)", data=csv, file_name=f"{ticker}_buzz_report.csv")
+except Exception as e:
+    st.warning(f"等待数据初始化中... 如果这是第一次部署，请先运行一次 GitHub Action。")
+    st.info(f"技术细节提示: {e}")
