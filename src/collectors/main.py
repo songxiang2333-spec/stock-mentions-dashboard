@@ -80,16 +80,21 @@ def collect_data():
         })
         time.sleep(1) # 避免请求过快
 
-    # 4. 保存到 CSV
+ # ... 前面的抓取逻辑 ...
+    
+    # 4. 保存到 CSV (修复变量名错误)
     new_df = pd.DataFrame(all_new_data)
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        # 合并并去重（同一天同一只股票只留最新的一行）
+    
+    # 这里的变量名必须和你前面定义的 history_path 保持一致
+    if os.path.exists(history_path): 
+        df = pd.read_csv(history_path)
+        # 合并并去重
         df = pd.concat([df, new_df]).drop_duplicates(subset=['date', 'ticker'], keep='last')
     else:
         df = new_df
     
-    df.to_csv(file_path, index=False)
+    # 同样，这里也改为 history_path
+    df.to_csv(history_path, index=False)
     print(f"✅ 成功更新了 {len(tickers)} 只股票的数据")
 
 if __name__ == "__main__":
