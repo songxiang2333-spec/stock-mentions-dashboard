@@ -40,15 +40,20 @@ def get_sentiment_score(ticker, api_key):
         return 0.5
 
 def collect_data():
-    # 路径配置
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    file_path = os.path.join(base_dir, 'data', 'history.csv')
+    history_path = os.path.join(base_dir, 'data', 'history.csv')
+    target_path = os.path.join(base_dir, 'data', 'targets.csv')
     api_key = os.environ.get('NEWS_API_KEY')
 
-    # 目前先监控这两个，下一步我们会改为读取 Excel 列表
-    tickers = ["NVDA", "META"] 
-    
+    # --- 核心改动：读取目标列表 ---
+    if os.path.exists(target_path):
+        target_df = pd.read_csv(target_path)
+        tickers = target_df['Ticker'].tolist()
+    else:
+        tickers = ["NVDA", "META", "AAPL"] # 默认值
+
     all_new_data = []
+    # ... 剩下的循环抓取逻辑保持不变 ...
 
     for ticker in tickers:
         print(f"正在处理: {ticker}...")
