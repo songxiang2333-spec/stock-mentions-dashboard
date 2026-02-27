@@ -8,9 +8,8 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-    # 授予写入权限，以便 Action 可以推送 CSV 更新到仓库
     permissions:
-      contents: write
+      contents: write     # 必须开启写入权限才能推送数据回仓库
 
     steps:
       - name: Checkout code
@@ -23,9 +22,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas yfinance numpy vadersentiment
+          # 在这里增加了 vaderSentiment 和 requests
+          pip install pandas yfinance numpy vaderSentiment requests
           
       - name: Run Data Collector
+        env:
+          # 确保在这里引用了你存放在 Secrets 里的 NewsAPI Key
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         run: python src/collectors/main.py
 
       - name: Run Notifier (Email Alert)
@@ -40,6 +43,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add data/history.csv
-          # 如果数据没有变化，跳过提交，防止报错
           git commit -m "Auto-update stock data [skip ci]" || exit 0
           git push
