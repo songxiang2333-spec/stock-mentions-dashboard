@@ -1,0 +1,33 @@
+name: Daily Stock Data Update
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天国际标准时间 0 点运行
+  workflow_dispatch:      # 允许你手动点击按钮触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas yfinance numpy
+          
+      - name: Run collector
+        run: python src/collectors/main.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/history.csv
+          git commit -m "Auto-update stock data [skip ci]" || exit 0
+          git push
