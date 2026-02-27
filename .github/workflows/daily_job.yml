@@ -2,14 +2,14 @@ name: Daily Stock Data Update
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天北京时间上午 8 点运行
-  workflow_dispatch:      # 允许手动点击按钮触发
+    - cron: '0 0 * * *' # 每天北京时间上午 8 点自动运行
+  workflow_dispatch:      # 允许在 GitHub 页面手动点击 "Run workflow" 触发
 
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # 必须开启写入权限才能推送数据回仓库
+      contents: write     # 必须开启，否则 Action 无法将更新后的 CSV 推送回仓库
 
     steps:
       - name: Checkout code
@@ -22,17 +22,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # 在这里增加了 vaderSentiment 和 requests
-          pip install pandas yfinance numpy vaderSentiment requests
-          
+          # 包含核心库、情绪分析库、API 请求库及 Excel 解析库
+          pip install pandas yfinance numpy vaderSentiment requests openpyxl
+
       - name: Run Data Collector
         env:
-          # 确保在这里引用了你存放在 Secrets 里的 NewsAPI Key
+          # 引用你在 Settings -> Secrets 中存储的 NewsAPI 密钥
           NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         run: python src/collectors/main.py
 
       - name: Run Notifier (Email Alert)
         env:
+          # 引用邮件发送所需的机密信息
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
@@ -42,6 +43,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/history.csv
-          git commit -m "Auto-update stock data [skip ci]" || exit 0
+          # 提交所有数据文件的变动（历史数据、监控目标、配置信息）
+          git add data/history.csv data/targets.csv data/config.json
+          # 如果没有文件变动则退出，防止报错
+          git commit -m "Auto-update stock data and configs [skip ci]" || exit 0
           git push
