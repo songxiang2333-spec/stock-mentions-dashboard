@@ -1,3 +1,13 @@
+import os
+import subprocess
+import sys
+
+# 自动安装缺失依赖的黑科技
+try:
+    import openpyxl
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    st.rerun() # 安装后自动重启网页
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
