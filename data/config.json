@@ -1,4 +1,4 @@
 {
-    "alert_threshold": 1.2,
+    "alert_threshold": 0.8,
     "receiver_email": "songxiang2333@gmail.com"
 }
