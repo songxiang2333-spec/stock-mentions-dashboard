@@ -1,2 +1,2 @@
-date,ticker,mentions,sentiment_avg,mentions_growth,price
-2026-02-27,NVDA,865,0.65,1.0,184.88999938964844
+date,ticker,price,mentions,sentiment_avg,mentions_growth
+2026-02-27,NVDA,184.88999938964844,1407,0.55,0.92
